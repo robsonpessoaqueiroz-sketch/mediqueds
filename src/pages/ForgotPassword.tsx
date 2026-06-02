@@ -24,8 +24,11 @@ export default function ForgotPassword() {
 
     setLoading(true);
 
+    // Allow forcing the frontend URL via environment variable (useful for production)
+    const frontendUrl = (import.meta.env.VITE_APP_URL as string) || window.location.origin;
+
     const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${frontendUrl}/reset-password`,
     });
 
     setLoading(false);
