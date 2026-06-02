@@ -26,23 +26,38 @@ export default function ResetPassword() {
   useEffect(() => {
     // Check if there's a recovery session
     const handleSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        setValidSession(true);
-      } else {
-        // Wait for auth state change (from URL hash)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-          if (event === 'PASSWORD_RECOVERY') {
+      try {
+        // First check if we have a session from URL hash
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          setValidSession(true);
+          setCheckingSession(false);
+          return;
+        }
+
+        // Wait for auth state change (from URL hash processing)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'PASSWORD_RECOVERY' && session) {
+            setValidSession(true);
+          }
+          if (session && event !== 'INITIAL_SESSION') {
             setValidSession(true);
           }
         });
-        setTimeout(() => {
-          subscription.unsubscribe();
+
+        // Check again after a short delay to allow Supabase to process URL
+        setTimeout(async () => {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session) {
+            setValidSession(true);
+          }
           setCheckingSession(false);
-        }, 2000);
-        return;
+          subscription.unsubscribe();
+        }, 1500);
+      } catch (error) {
+        console.error('Error checking session:', error);
+        setCheckingSession(false);
       }
-      setCheckingSession(false);
     };
 
     handleSession();
